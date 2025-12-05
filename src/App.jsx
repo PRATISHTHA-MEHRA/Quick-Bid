@@ -7,7 +7,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import "./index.css";
-import "./app.css";
+import "./App.css";
 
 
 
