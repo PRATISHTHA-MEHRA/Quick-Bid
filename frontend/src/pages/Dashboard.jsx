@@ -1,20 +1,64 @@
-import { Button } from "/src/ui/button";
-import { Link } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Send, 
-  Settings, 
-  Plus,
-  Search,
-  Filter,
-  MoreVertical,
+import {
+  FileText,
+  Send,
   TrendingUp,
   Clock,
-  CheckCircle,
-  AlertCircle
+  MoreVertical,
+  Search,
+  Filter,
 } from "lucide-react";
 
+// RFP Data
+const recentRFPs = [
+  {
+    id: 1,
+    title:
+      "Supply of XLPE Insulated Unarmoured Power Cables for Electrical Infrastructure Project",
+    client:
+      "Department of Electrical Engineering, Metro Energy Solutions Ltd.",
+    deadline: "2025-01-10",
+    status: "In Progress",
+    match: 94,
+  },
+  {
+    id: 2,
+    title: "Supply of Speaker Wire Twin Parallel for Audio Systems Upgrade",
+    client: "Audio Engineering Division, SoundTech Solutions Pvt. Ltd.",
+    deadline: "2025-01-15",
+    status: "Pending",
+    match: 87,
+  },
+  {
+    id: 3,
+    title:
+      "Supply of Multicore Flexible Aluminium Cables for Industrial Wiring",
+    client: "Electrical Projects Division, IndusPower Systems Ltd.",
+    deadline: "2025-01-18",
+    status: "Submitted",
+    match: 91,
+  },
+  {
+    id: 4,
+    title:
+      "Supply of Solar DC Cables (TUV Certified) for Renewable Energy Projects",
+    client: "Renewable Energy Division, GreenVolt Solutions Ltd.",
+    deadline: "2025-01-22",
+    status: "Won",
+    match: 96,
+  },
+  {
+    id: 5,
+    title:
+      "Procurement of PVC Insulated Aluminium House Wiring Cables",
+    client:
+      "Public Infrastructure & Housing Development Board (PIHDB)",
+    deadline: "2025-01-25",
+    status: "In Progress",
+    match: 89,
+  },
+];
+
+// Dashboard Stats
 const stats = [
   { label: "Active RFPs", value: "24", icon: FileText, change: "+3 this week" },
   { label: "Proposals Sent", value: "156", icon: Send, change: "+12 this month" },
@@ -22,148 +66,137 @@ const stats = [
   { label: "Avg Response Time", value: "2.4 days", icon: Clock, change: "-1.2 days improved" },
 ];
 
-const recentRFPs = [
-  { id: 1, title: "Enterprise Software Solution RFP", client: "TechCorp Inc.", deadline: "Dec 15, 2024", status: "In Progress", match: 94 },
-  { id: 2, title: "Cloud Infrastructure Services", client: "Global Finance Ltd.", deadline: "Dec 18, 2024", status: "Pending", match: 87 },
-  { id: 3, title: "IT Security Assessment", client: "Healthcare Systems", deadline: "Dec 20, 2024", status: "Submitted", match: 91 },
-  { id: 4, title: "Data Analytics Platform", client: "Retail Giants Co.", deadline: "Dec 22, 2024", status: "Won", match: 96 },
-];
-
-const getStatusColor = (status) => {
+const getStatusStyles = (status) => {
   switch (status) {
-    case "In Progress": return "bg-accent/20 text-accent";
-    case "Pending": return "bg-muted text-muted-foreground";
-    case "Submitted": return "bg-secondary text-secondary-foreground";
-    case "Won": return "bg-primary/20 text-primary";
-    default: return "bg-muted text-muted-foreground";
+    case "In Progress":
+      return "bg-orange-100 text-orange-700";
+    case "Pending":
+      return "bg-gray-200 text-gray-700";
+    case "Submitted":
+      return "bg-green-100 text-green-700";
+    case "Won":
+      return "bg-blue-100 text-blue-700";
+    default:
+      return "bg-gray-200 text-gray-700";
   }
 };
 
+const formatDate = (dateStr) =>
+  new Date(dateStr).toLocaleDateString("en-GB").replace(/\//g, "-");
+
 const Dashboard = () => {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border p-6 hidden lg:block">
-        <Link to="/" className="flex items-center gap-2 mb-10">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">R</span>
-          </div>
-          <span className="font-semibold text-xl text-foreground">RFPro</span>
-        </Link>
+    <main className="flex-1">
+      {/* WHITE HEADER BAR */}
+      <div className="bg-white border-b px-8 py-4 flex justify-between items-center sticky top-0 z-10">
+        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
 
-        <nav className="space-y-2">
-          {[
-            { icon: LayoutDashboard, label: "Dashboard", active: true },
-            { icon: FileText, label: "RFPs", active: false },
-            { icon: Send, label: "Proposals", active: false },
-            { icon: Settings, label: "Settings", active: false },
-          ].map((item, index) => (
-            <button
-              key={index}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                item.active 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
+        <div className="relative w-80 max-w-md">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            placeholder="Search RFPs, proposals..."
+            className="w-full pl-9 pr-4 py-2 rounded-lg border text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <div className="px-8 py-6 space-y-10">
+        {/* Stats */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat, i) => (
+            <div
+              key={i}
+              className="bg-white p-6 rounded-xl border shadow-sm"
             >
-              <item.icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
+              <div className="flex justify-between">
+                <stat.icon className="text-blue-500 w-6 h-6" />
+                <span className="text-xs text-gray-400">{stat.change}</span>
+              </div>
+              <div className="mt-2">
+                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-sm text-gray-500">{stat.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* RECENT RFP TABLE */}
+        <div className="bg-white border rounded-xl shadow-sm">
+          <div className="p-5 border-b flex justify-between items-center">
+            <h2 className="font-semibold text-lg text-gray-900">Recent RFPs</h2>
+
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-2 text-gray-500" />
+              <input
+                className="pl-9 pr-4 py-2 border rounded-md text-sm w-44"
+                placeholder="Search..."
+              />
+            </div>
+
+            <button className="px-3 py-2 border rounded-md text-sm flex items-center gap-2">
+              <Filter size={15} /> Filter
             </button>
-          ))}
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="lg:ml-64 p-6 lg:p-10">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-10">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back! Here's your RFP overview.</p>
-          </div>
-          <Button variant="hero" className="gap-2">
-            <Plus className="w-4 h-4" />
-            New RFP
-          </Button>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {stats.map((stat, index) => (
-            <div key={index} className="bg-card border border-border rounded-xl p-6 hover:shadow-card-hover transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center">
-                  <stat.icon className="w-5 h-5 text-primary" />
-                </div>
-                <span className="text-xs text-accent">{stat.change}</span>
-              </div>
-              <div className="text-2xl font-bold text-foreground mb-1">{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Recent RFPs */}
-        <div className="bg-card border border-border rounded-xl">
-          <div className="p-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h2 className="text-lg font-semibold text-foreground">Recent RFPs</h2>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input 
-                  type="text" 
-                  placeholder="Search RFPs..." 
-                  className="pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="w-4 h-4" />
-                Filter
-              </Button>
-            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">RFP Title</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Client</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Deadline</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Match</th>
-                  <th className="text-left py-4 px-6 text-sm font-medium text-muted-foreground">Status</th>
-                  <th className="py-4 px-6"></th>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+              <tr>
+                <th className="px-6 py-3 text-left">RFP Title</th>
+                <th className="px-6 py-3 text-left">
+                  Client / Issuing Organization
+                </th>
+                <th className="px-6 py-3 text-left">Deadline</th>
+                <th className="px-6 py-3 text-left">Match</th>
+                <th className="px-6 py-3 text-left">Status</th>
+                <th className="px-6 py-3" />
+              </tr>
+            </thead>
+
+            <tbody>
+              {recentRFPs.map((rfp) => (
+                <tr
+                  key={rfp.id}
+                  className="border-b hover:bg-gray-50 transition"
+                >
+                  <td className="px-6 py-4 text-gray-900 font-medium max-w-xs whitespace-normal">
+                    {rfp.title}
+                  </td>
+                  <td className="px-6 py-4 text-gray-800 max-w-xs whitespace-normal">
+                    {rfp.client}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                    {formatDate(rfp.deadline)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-blue-600 font-semibold">
+                    {rfp.match}%
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-1 text-xs rounded-md font-medium ${getStatusStyles(
+                        rfp.status
+                      )}`}
+                    >
+                      {rfp.status}
+                    </span>
+                  </td>
+                  <td className="px-6 text-right">
+                    <button className="p-1.5 hover:bg-gray-200 rounded-md transition">
+                      <MoreVertical size={16} className="text-gray-500" />
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {recentRFPs.map((rfp) => (
-                  <tr key={rfp.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                    <td className="py-4 px-6">
-                      <span className="font-medium text-foreground">{rfp.title}</span>
-                    </td>
-                    <td className="py-4 px-6 text-muted-foreground">{rfp.client}</td>
-                    <td className="py-4 px-6 text-muted-foreground">{rfp.deadline}</td>
-                    <td className="py-4 px-6">
-                      <span className="font-semibold text-primary">{rfp.match}%</span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(rfp.status)}`}>
-                        {rfp.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </main>
-    </div>
+
+      </div>
+    </main>
   );
 };
 
