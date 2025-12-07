@@ -12,6 +12,8 @@ import NotFound from "./pages/NotFound";
 import SubmittedRFPs from "./pages/Submitted";
 import NewIncoming from "./pages/NewIncoming";
 import ProductCatalogue from "./pages/productCatalogue";
+import PricingCatalogue from "./pages/pricingCatalogue";
+
 
 import "./index.css";
 import "./App.css";
@@ -31,6 +33,7 @@ const App = () => (
     <Route path="/rfps/submitted" element={<SubmittedRFPs />} />
     <Route path="/rfps/new" element={<NewIncoming />} />
      <Route path="/productCatalogue" element={<ProductCatalogue />} />
+     <Route path="/pricingCatalogue" element={<PricingCatalogue />} />
 
 
     {/* 404 must stay at the bottom */}

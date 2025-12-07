@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 
 
 
-export default function ProductCatalogue() {
+export default function PricingCatalogue() {
 const [products, setProducts] = useState([])
 const [loading, setLoading] = useState(true)
 
@@ -14,7 +14,7 @@ useEffect(() => {
 const fetchProducts = async () => {
 const { data, error } = await supabase
 .from('product_catalogue')
-.select('product_name, category, conductor_material, conductor_size_sqmm, voltage_rating, core')
+.select('product_name, category, conductor_material, standard_iec, unit_price, test_price')
 console.log("DATA FROM SUPABASE:", data);
 console.log("ERROR:", error);
 
@@ -34,7 +34,7 @@ initial={{ opacity: 0, y: -10 }}
 animate={{ opacity: 1, y: 0 }}
 className="text-3xl font-bold mb-6 text-center"
 >
-Product Catalogue
+Pricing Catalogue
 </motion.h1>
 
 
@@ -42,7 +42,7 @@ Product Catalogue
 <table className="min-w-full bg-white">
 <thead className="bg-gray-100">
 <tr>
-{[ 'Product Name', 'Category', 'Conductor Material', 'Conductor Size (sqmm)', 'Voltage Rating', 'Core' ].map((col) => (
+{[ 'Product Name', 'Category', 'Conductor Material', 'Standard IEC', 'Unit Price','Test Price' ].map((col) => (
 <th key={col} className="px-6 py-3 text-left text-sm font-semibold text-gray-700 border-b">
 {col}
 </th>
@@ -70,9 +70,9 @@ className="hover:bg-gray-50 border-b"
 <td className="px-6 py-3 text-sm">{item.product_name}</td>
 <td className="px-6 py-3 text-sm">{item.category}</td>
 <td className="px-6 py-3 text-sm">{item.conductor_material}</td>
-<td className="px-6 py-3 text-sm">{item.conductor_size_sqmm}</td>
-<td className="px-6 py-3 text-sm">{item.voltage_rating}</td>
-<td className="px-6 py-3 text-sm">{item.core}</td>
+<td className="px-6 py-3 text-sm">{item.standard_iec}</td>
+<td className="px-6 py-3 text-sm">{item.unit_price}</td>
+<td className="px-6 py-3 text-sm">{item.test_price}</td>
 </motion.tr>
 ))
 )}
