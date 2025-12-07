@@ -100,7 +100,7 @@ const Sidebar = () => {
       </Link>
 
       <Link
-        to="/pricing"
+        to="/pricingCatalogue"
         className={`px-4 py-3 rounded-lg flex items-center gap-3 text-sm ${
           isActive("/pricing")
             ? "bg-blue-100 text-blue-600 font-medium"
