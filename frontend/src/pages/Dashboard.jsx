@@ -13,82 +13,44 @@ import {
 } from "lucide-react";
 
 // Dashboard Stats (static)
-const stats = [
-  { label: "Active RFPs", value: "24", icon: FileText, change: "+3 this week" },
-  {
-    label: "Proposals Sent",
-    value: "156",
-    icon: Send,
-    change: "+12 this month",
-  },
-  {
-    label: "Win Rate",
-    value: "42%",
-    icon: TrendingUp,
-    change: "+5% vs last quarter",
-  },
-  {
-    label: "Avg Response Time",
-    value: "2.4 days",
-    icon: Clock,
-    change: "-1.2 days improved",
-  },
-];
-
-const getStatusStyles = (status) => {
-  switch (status) {
-    case "In Progress":
-      return "bg-orange-100 text-orange-700";
-    case "Pending":
-      return "bg-gray-200 text-gray-700";
-    case "Submitted":
-      return "bg-green-100 text-green-700";
-    case "Won":
-      return "bg-blue-100 text-blue-700";
-    default:
-      return "bg-gray-200 text-gray-700";
-  }
-};
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return "N/A";
-  
-  try {
-    // If already in YYYY-MM-DD format from backend (ISO format)
-    if (typeof dateStr === "string" && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = dateStr.split("-");
-      return `${day}-${month}-${year}`;
-    }
-    
-    // If it's in DD-MMM-YYYY format (e.g., 18-Dec-2025)
-    if (dateStr.match(/^\d{1,2}-\w{3}-\d{4}$/)) {
-      return dateStr;
-    }
-    
-    // If it's in DD-MM-YYYY format
-    if (dateStr.match(/^\d{1,2}-\d{1,2}-\d{4}$/)) {
-      return dateStr;
-    }
-    
-    // Try parsing as standard date string
-    const date = new Date(dateStr);
-    if (!isNaN(date.getTime())) {
-      return date.toLocaleDateString("en-GB").replace(/\//g, "-");
-    }
-    
-    // Return original if unparseable
-    return dateStr;
-  } catch (e) {
-    console.error("Date formatting error:", dateStr, e);
-    return dateStr || "N/A";
-  }
-};
+// const stats = [
+//   { label: "Active RFPs", value: "24", icon: FileText, change: "+3 this week" },
+//   {
+//     label: "Proposals Sent",
+//     value: "156",
+//     icon: Send,
+//     change: "+12 this month",
+//   },
+//   {
+//     label: "Win Rate",
+//     value: "42%",
+//     icon: TrendingUp,
+//     change: "+5% vs last quarter",
+//   },
+//   {
+//     label: "Avg Response Time",
+//     value: "2.4 days",
+//     icon: Clock,
+//     change: "-1.2 days improved",
+//   },
+// ];
 
 const Dashboard = () => {
   const [rfpData, setRfpData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [stats, setStats] = useState([
+    { label: "Active RFPs", value: "0", icon: FileText, change: "" },
+    { label: "Proposals Sent", value: "0", icon: Send, change: "" },
+    { label: "Win Rate", value: "0%", icon: TrendingUp, change: "" },
+    {
+      label: "Avg Response Time",
+      value: "2.4 days",
+      icon: Clock,
+      change: "-1.2 days improved",
+    },
+  ]);
 
   const BACKEND_URL = "http://127.0.0.1:5000";
 
@@ -103,6 +65,9 @@ const Dashboard = () => {
 
       if (result.success && result.data) {
         setRfpData(result.data);
+
+        // Calculate stats from data
+        calculateStats(result.data);
       } else {
         setError(result.error || "Failed to fetch RFPs");
         setRfpData([]);
@@ -116,6 +81,54 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate stats from RFP data
+  const calculateStats = (data) => {
+    // Count open RFPs (Active RFPs)
+    const activeRFPs = data.filter(
+      (rfp) => rfp.status === "In Progress"
+    ).length;
+
+    // Count submitted RFPs (Proposals Sent)
+    const submittedRFPs = data.filter(
+      (rfp) => rfp.status === "Submitted"
+    ).length;
+
+    // Calculate win rate as percentage of submitted proposals
+    const totalRFPs = data.length;
+    const winRate =
+      totalRFPs > 0 ? ((submittedRFPs / totalRFPs) * 100).toFixed(1) : 0;
+
+    // Update stats
+    const updatedStats = [
+      {
+        label: "Active RFPs",
+        value: activeRFPs.toString(),
+        icon: FileText,
+        change: `+${Math.max(0, activeRFPs - 3)} this week`,
+      },
+      {
+        label: "Proposals Sent",
+        value: submittedRFPs.toString(),
+        icon: Send,
+        change: `+${Math.max(0, submittedRFPs - 12)} this month`,
+      },
+      {
+        label: "Win Rate",
+        value: `${winRate}%`,
+        icon: TrendingUp,
+        change: `${submittedRFPs} of ${totalRFPs} submitted`,
+      },
+      {
+        label: "Avg Response Time",
+        value: "2.4 days",
+        icon: Clock,
+        change: "-1.2 days improved",
+      },
+    ];
+
+    setStats(updatedStats);
   };
 
   // Fetch on component mount
@@ -132,6 +145,44 @@ const Dashboard = () => {
 
     return matchesSearch;
   });
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "N/A";
+
+    try {
+      // If already in YYYY-MM-DD format from backend (ISO format)
+      if (typeof dateStr === "string" && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateStr.split("-");
+        return `${day}-${month}-${year}`;
+      }
+
+      // Try parsing as standard date string
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return dateStr; // Return original if unparseable
+      }
+
+      return date.toLocaleDateString("en-GB").replace(/\//g, "-");
+    } catch (e) {
+      console.error("Date formatting error:", dateStr, e);
+      return dateStr || "N/A";
+    }
+  };
+
+  const getStatusStyles = (status) => {
+    switch (status) {
+      case "In Progress":
+        return "bg-orange-100 text-orange-700";
+      case "Pending":
+        return "bg-gray-200 text-gray-700";
+      case "Submitted":
+        return "bg-green-100 text-green-700";
+      case "Won":
+        return "bg-blue-100 text-blue-700";
+      default:
+        return "bg-gray-200 text-gray-700";
+    }
+  };
 
   return (
     <main className="flex-1">
