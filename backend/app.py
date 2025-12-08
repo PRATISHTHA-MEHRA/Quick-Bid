@@ -14,41 +14,53 @@ CORS(app)
 # Fix Date Function
 # --------------------------------------------------------
 def fix_date(date_str):
-    """Convert scraped date into ISO (YYYY-MM-DD). Returns None if invalid."""
+    """Convert scraped date into ISO (YYYY-MM-DD). Returns the original string if parsing fails."""
 
     if not date_str or not isinstance(date_str, str):
-        return None
+        return date_str
 
-    # Remove time, timezone, commas
+    original_str = date_str.strip()
+    
+    # Remove time, timezone, extra characters
     cleaned = (
         date_str.replace("IST", "")
                 .replace("at", "")
                 .replace(",", "")
+                .replace("|", "")
                 .strip()
     )
 
-    # Extract only the date part
-    cleaned = cleaned.split(" ")[0]
+    if not cleaned:
+        return original_str
+
+    # Extract only the date part (before any time notation)
+    date_part = cleaned.split(" ")[0]
 
     # All possible formats from your scraper + site
     formats = [
         "%d-%b-%Y",     # 18-Dec-2025
         "%d-%b-%y",     # 18-Dec-25
         "%d-%m-%Y",     # 18-12-2025
-        "%d-%m-%y",     # 18-12-25   (actual site!)
+        "%d-%m-%y",     # 18-12-25
         "%d/%m/%Y",     # 18/12/2025
+        "%d/%m/%y",     # 18/12/25
         "%d %B %Y",     # 18 December 2025
+        "%d %b %Y",     # 18 Dec 2025
         "%b %d %Y",     # Dec 18 2025
+        "%Y-%m-%d",     # 2025-12-18
+        "%m/%d/%Y",     # 12/18/2025
     ]
 
     for fmt in formats:
         try:
-            dt = datetime.strptime(cleaned, fmt)
+            dt = datetime.strptime(date_part, fmt)
             return dt.strftime("%Y-%m-%d")
         except:
             continue
 
-    return None
+    # If parsing completely fails, return the original string
+    # This prevents "N/A" from appearing in the frontend
+    return original_str
 
 # --------------------------------------------------------
 # Health Check

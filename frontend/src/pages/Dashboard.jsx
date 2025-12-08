@@ -60,13 +60,24 @@ const formatDate = (dateStr) => {
       return `${day}-${month}-${year}`;
     }
     
-    // Try parsing as standard date string
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return dateStr; // Return original if unparseable
+    // If it's in DD-MMM-YYYY format (e.g., 18-Dec-2025)
+    if (dateStr.match(/^\d{1,2}-\w{3}-\d{4}$/)) {
+      return dateStr;
     }
     
-    return date.toLocaleDateString("en-GB").replace(/\//g, "-");
+    // If it's in DD-MM-YYYY format
+    if (dateStr.match(/^\d{1,2}-\d{1,2}-\d{4}$/)) {
+      return dateStr;
+    }
+    
+    // Try parsing as standard date string
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString("en-GB").replace(/\//g, "-");
+    }
+    
+    // Return original if unparseable
+    return dateStr;
   } catch (e) {
     console.error("Date formatting error:", dateStr, e);
     return dateStr || "N/A";
