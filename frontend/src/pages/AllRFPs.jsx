@@ -1,7 +1,8 @@
+// src/pages/AllRFPs.jsx
 import { useState } from "react";
 import { Search, MoreVertical, ChevronDown } from "lucide-react";
 
-// Full dataset
+// 🔹 Full dataset
 const fullData = [
   {
     id: 1,
@@ -51,6 +52,7 @@ const fullData = [
   },
 ];
 
+// 🔹 Status Badge Styling
 const getStatusStyles = (status) =>
   ({
     "In Progress": "bg-orange-100 text-orange-700",
@@ -59,26 +61,37 @@ const getStatusStyles = (status) =>
     Won: "bg-blue-100 text-blue-700",
   }[status] || "bg-gray-200 text-gray-700");
 
+// 🔹 Date Format
 const formatDate = (date) =>
   new Date(date).toLocaleDateString("en-GB").replace(/\//g, "-");
 
 const AllRFPs = () => {
   const [openFilter, setOpenFilter] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
 
   const toggleDropdown = (key) =>
     setOpenFilter(openFilter === key ? null : key);
 
-  const filteredData = fullData.filter(
-    (r) =>
-      (statusFilter === "All" || r.status === statusFilter) &&
-      (priorityFilter === "All" || r.priority === priorityFilter)
-  );
+  // 🔹 Apply Search + Filters
+  const filteredData = fullData.filter((rfp) => {
+    const matchesSearch =
+      rfp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rfp.client.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "All" || rfp.status === statusFilter;
+
+    const matchesPriority =
+      priorityFilter === "All" || rfp.priority === priorityFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
 
   return (
     <main className="flex-1 bg-white">
-      {/* HEADER TITLE */}
+      {/* PAGE HEADER */}
       <div className="px-10 pt-6 pb-4">
         <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
           All RFPs
@@ -90,17 +103,19 @@ const AllRFPs = () => {
 
       {/* SEARCH + FILTERS */}
       <div className="px-10 flex justify-between items-center mb-5">
-        {/* Search */}
+        {/* Search Input */}
         <div className="relative w-80">
           <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
           <input
             type="text"
             placeholder="Search by title, client…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 pr-3 py-2 w-full border rounded-lg text-sm"
           />
         </div>
 
-        {/* DROPDOWNS */}
+        {/* Filter Drop-downs */}
         <div className="flex gap-3">
           {/* Status Filter */}
           <div className="relative">
