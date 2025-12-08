@@ -64,7 +64,8 @@ def home():
             "/scrape": "Scrape RFPs only",
             "/match": "Match scraped RFPs with catalogue",
             "/proposals": "Generate proposals from matched data",
-            "/new-incoming": "Fetch new incoming RFPs with matches and priorities"
+            "/new-incoming": "Fetch new incoming RFPs with matches and priorities",
+            "/dashboard-rfps": "Fetch all RFPs for dashboard display"
         }
     })
 
@@ -202,6 +203,7 @@ def match_only():
 def new_incoming():
     """
     Fetch newly scraped RFPs with match percentages and priority levels
+    Excludes RFPs with 'Closed' status
     Returns: List of new/incoming RFPs with priority assignment
     """
     try:
@@ -214,6 +216,16 @@ def new_incoming():
             return jsonify({
                 "success": False,
                 "error": "No RFPs found during scraping",
+                "data": []
+            }), 404
+        
+        # Filter out closed RFPs
+        scraped_df = scraped_df[scraped_df["status"].str.lower() != "closed"]
+        
+        if scraped_df.empty:
+            return jsonify({
+                "success": False,
+                "error": "No open RFPs found (all are closed)",
                 "data": []
             }), 404
         
@@ -250,10 +262,11 @@ def new_incoming():
                 "priority": row.get("priority", "Low"),
                 "matched_product": row.get("matched_product_name", ""),
                 "matched_sku": row.get("matched_sku", ""),
-                "category": row.get("category", "")
+                "category": row.get("category", ""),
+                "status": row.get("status", "")
             })
         
-        print(f"✓ Retrieved {len(new_incoming_data)} new incoming RFPs")
+        print(f"✓ Retrieved {len(new_incoming_data)} new incoming RFPs (closed RFPs excluded)")
         
         return jsonify({
             "success": True,
@@ -264,6 +277,172 @@ def new_incoming():
     except Exception as e:
         import traceback
         print(f"✗ Error in /new-incoming: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "data": []
+        }), 500
+
+# --------------------------------------------------------
+# Submitted RFPs (Closed Status)
+# --------------------------------------------------------
+@app.route("/submitted", methods=["GET"])
+def submitted():
+    """
+    Fetch RFPs with 'Closed' status to display as submitted proposals
+    Returns: List of closed/submitted RFPs
+    """
+    try:
+        print("\n[SUBMITTED] Fetching submitted (closed) RFPs...")
+        
+        # 1. SCRAPE RFPs
+        scraped_df = scrape_rfps()
+        
+        if scraped_df is None or scraped_df.empty:
+            return jsonify({
+                "success": False,
+                "error": "No RFPs found during scraping",
+                "data": []
+            }), 404
+        
+        # Filter only closed RFPs
+        submitted_df = scraped_df[scraped_df["status"].str.lower() == "closed"]
+        
+        if submitted_df.empty:
+            return jsonify({
+                "success": True,
+                "error": "No submitted (closed) RFPs found",
+                "count": 0,
+                "data": []
+            }), 200
+        
+        # Fix dates
+        if "deadline" in submitted_df.columns:
+            submitted_df["deadline"] = submitted_df["deadline"].apply(fix_date)
+        
+        # 2. MATCH with catalogue for additional details
+        matched_df = match_rfps_with_catalogue(submitted_df)
+        
+        if matched_df is None:
+            matched_df = submitted_df
+        else:
+            # Fix dates in matched results
+            if "deadline" in matched_df.columns:
+                matched_df["deadline"] = matched_df["deadline"].apply(fix_date)
+        
+        # 3. Format response for frontend
+        submitted_data = []
+        for idx, row in matched_df.iterrows():
+            submitted_data.append({
+                "id": idx + 1,
+                "rfp_id": row.get("rfp_id", ""),
+                "title": row.get("title", ""),
+                "client": row.get("organization", ""),
+                "deadline": row.get("deadline", ""),
+                "status": "Submitted",
+                "priority": row.get("priority", "Medium"),
+                "match_percent": float(row.get("match_percent", 0)) if "match_percent" in row else 0,
+                "matched_product": row.get("matched_product_name", ""),
+                "matched_sku": row.get("matched_sku", ""),
+                "department": row.get("department", ""),
+                "category": row.get("category", "")
+            })
+        
+        print(f"✓ Retrieved {len(submitted_data)} submitted RFPs")
+        
+        return jsonify({
+            "success": True,
+            "count": len(submitted_data),
+            "data": submitted_data
+        })
+    
+    except Exception as e:
+        import traceback
+        print(f"✗ Error in /submitted: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "data": []
+        }), 500
+
+# --------------------------------------------------------
+# All RFPs for Dashboard
+# --------------------------------------------------------
+@app.route("/dashboard-rfps", methods=["GET"])
+def dashboard_rfps():
+    """
+    Fetch all scraped RFPs for dashboard display
+    Maps status: Open/Active → 'In Progress', Closed → 'Submitted'
+    Returns: List of all RFPs with mapped status
+    """
+    try:
+        print("\n[DASHBOARD] Fetching all RFPs for dashboard...")
+        
+        # 1. SCRAPE all RFPs
+        scraped_df = scrape_rfps()
+        
+        if scraped_df is None or scraped_df.empty:
+            return jsonify({
+                "success": False,
+                "error": "No RFPs found during scraping",
+                "data": []
+            }), 404
+        
+        # Fix dates
+        if "deadline" in scraped_df.columns:
+            scraped_df["deadline"] = scraped_df["deadline"].apply(fix_date)
+        
+        # 2. MATCH with catalogue for additional details
+        matched_df = match_rfps_with_catalogue(scraped_df)
+        
+        if matched_df is None:
+            matched_df = scraped_df
+        else:
+            # Fix dates in matched results
+            if "deadline" in matched_df.columns:
+                matched_df["deadline"] = matched_df["deadline"].apply(fix_date)
+        
+        # 3. Map status and format response for frontend
+        dashboard_data = []
+        for idx, row in matched_df.iterrows():
+            # Map scraped status to display status
+            original_status = str(row.get("status", "")).lower()
+            if original_status == "closed":
+                display_status = "Submitted"
+            elif original_status in ["open", "active", "opening soon"]:
+                display_status = "In Progress"
+            else:
+                display_status = "Pending"
+            
+            dashboard_data.append({
+                "id": idx + 1,
+                "rfp_id": row.get("rfp_id", ""),
+                "title": row.get("title", ""),
+                "client": row.get("organization", ""),
+                "deadline": row.get("deadline", ""),
+                "status": display_status,
+                "match": float(row.get("match_percent", 0)),
+                "priority": row.get("priority", "Medium"),
+                "matched_product": row.get("matched_product_name", ""),
+                "matched_sku": row.get("matched_sku", ""),
+                "department": row.get("department", ""),
+                "category": row.get("category", ""),
+                "original_status": original_status
+            })
+        
+        print(f"✓ Retrieved {len(dashboard_data)} RFPs for dashboard")
+        
+        return jsonify({
+            "success": True,
+            "count": len(dashboard_data),
+            "data": dashboard_data
+        })
+    
+    except Exception as e:
+        import traceback
+        print(f"✗ Error in /dashboard-rfps: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
