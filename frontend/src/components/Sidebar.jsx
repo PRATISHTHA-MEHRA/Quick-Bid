@@ -96,7 +96,7 @@ const Sidebar = () => {
             : "text-gray-700 hover:bg-gray-100"
         }`}
       >
-        <Box size={18} /> Product Catalog
+        <Box size={18} /> Product Catalogue
       </Link>
 
       <Link
@@ -111,7 +111,7 @@ const Sidebar = () => {
       </Link>
 
       <Link
-        to="/proposal"
+        to="/proposalGeneration"
         className={`px-4 py-3 rounded-lg flex items-center gap-3 text-sm ${
           isActive("/proposal")
             ? "bg-blue-100 text-blue-600 font-medium"
