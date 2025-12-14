@@ -13,9 +13,25 @@ const NewIncoming = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [submittedRfpIds, setSubmittedRfpIds] = useState([]);
   const navigate = useNavigate();
 
   const BACKEND_URL = "http://127.0.0.1:5000";
+
+  // Fetch submitted RFP IDs from backend
+  const fetchSubmittedRfpIds = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/submitted`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const ids = result.data.map((rfp) => rfp.rfp_id);
+        setSubmittedRfpIds(ids);
+      }
+    } catch (err) {
+      console.error("Error fetching submitted RFPs:", err);
+    }
+  };
 
   // Fetch new incoming RFPs from backend
   const fetchNewIncoming = async () => {
@@ -43,10 +59,15 @@ const NewIncoming = () => {
     }
   };
 
-  // Fetch on component mount
+  // Fetch submitted RFP IDs on component mount
+  useEffect(() => {
+    fetchSubmittedRfpIds();
+  }, []);
+
+  // Fetch new incoming RFPs when component mounts or submitted IDs change
   useEffect(() => {
     fetchNewIncoming();
-  }, []);
+  }, [submittedRfpIds]);
 
   // Navigate to matched products page
   const handleViewMatches = (rfpId) => {
@@ -58,7 +79,7 @@ const NewIncoming = () => {
     navigate(`/rfps/${rfpId}/edit-proposal`);
   };
 
-  // Filter data based on search
+  // Filter data based on search and exclude submitted RFPs
   const filteredData = rfpData.filter((rfp) => {
     const matchesSearch =
       searchTerm === "" ||
@@ -66,7 +87,10 @@ const NewIncoming = () => {
       rfp.client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rfp.rfp_id?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesSearch;
+    // Exclude submitted RFPs
+    const isNotSubmitted = !submittedRfpIds.includes(rfp.rfp_id);
+
+    return matchesSearch && isNotSubmitted;
   });
 
   return (
@@ -225,7 +249,7 @@ const NewIncoming = () => {
                         onClick={() => handleGenerateProposal(rfp.rfp_id)}
                         className="px-3 py-2 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition font-medium"
                       >
-                        Generate Proposal
+                        View Proposal
                       </button>
                     </div>
                   </td>
@@ -239,14 +263,17 @@ const NewIncoming = () => {
             <p className="text-sm text-gray-600">
               Showing{" "}
               <span className="font-semibold">{filteredData.length}</span> of{" "}
-              <span className="font-semibold">{rfpData.length}</span> results
+              <span className="font-semibold">
+                {rfpData.length - submittedRfpIds.length}
+              </span>{" "}
+              results
             </p>
           </div>
         </div>
       )}
 
       {/* Empty State */}
-      {!loading && rfpData.length === 0 && !error && (
+      {!loading && filteredData.length === 0 && !error && (
         <div className="flex justify-center items-center py-20">
           <div className="text-center">
             <AlertCircle size={56} className="text-gray-300 mx-auto mb-4" />
@@ -254,7 +281,9 @@ const NewIncoming = () => {
               No new RFPs found
             </p>
             <p className="text-sm text-gray-500 mt-2 mb-4">
-              Click "Refresh" to scan for new incoming RFPs
+              {rfpData.length > 0 && submittedRfpIds.length > 0
+                ? "All new RFPs have been submitted or no matching RFPs available"
+                : 'Click "Refresh" to scan for new incoming RFPs'}
             </p>
             <button
               onClick={fetchNewIncoming}
@@ -267,19 +296,22 @@ const NewIncoming = () => {
       )}
 
       {/* No Search Results */}
-      {!loading && rfpData.length > 0 && filteredData.length === 0 && (
-        <div className="flex justify-center items-center py-20">
-          <div className="text-center">
-            <Search size={56} className="text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-900 font-semibold text-lg">
-              No matching RFPs
-            </p>
-            <p className="text-sm text-gray-500 mt-2">
-              Try adjusting your search term
-            </p>
+      {!loading &&
+        rfpData.length > 0 &&
+        filteredData.length === 0 &&
+        error === null && (
+          <div className="flex justify-center items-center py-20">
+            <div className="text-center">
+              <Search size={56} className="text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-900 font-semibold text-lg">
+                No matching RFPs
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Try adjusting your search term
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </main>
   );
 };

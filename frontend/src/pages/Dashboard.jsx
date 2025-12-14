@@ -40,6 +40,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [submittedRfpIds, setSubmittedRfpIds] = useState([]);
   const [stats, setStats] = useState([
     { label: "Active RFPs", value: "0", icon: FileText, change: "" },
     { label: "Proposals Sent", value: "0", icon: Send, change: "" },
@@ -54,6 +55,21 @@ const Dashboard = () => {
 
   const BACKEND_URL = "http://127.0.0.1:5000";
 
+  // Fetch submitted RFP IDs from localStorage or backend
+  const fetchSubmittedRfpIds = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/submitted`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const ids = result.data.map((rfp) => rfp.rfp_id);
+        setSubmittedRfpIds(ids);
+      }
+    } catch (err) {
+      console.error("Error fetching submitted RFPs:", err);
+    }
+  };
+
   // Fetch dashboard RFPs from backend
   const fetchDashboardRFPs = async () => {
     setLoading(true);
@@ -64,10 +80,18 @@ const Dashboard = () => {
       const result = await response.json();
 
       if (result.success && result.data) {
-        setRfpData(result.data);
+        // Map data with submitted status check
+        const enrichedData = result.data.map((rfp) => ({
+          ...rfp,
+          status: submittedRfpIds.includes(rfp.rfp_id)
+            ? "Submitted"
+            : rfp.status,
+        }));
+
+        setRfpData(enrichedData);
 
         // Calculate stats from data
-        calculateStats(result.data);
+        calculateStats(enrichedData);
       } else {
         setError(result.error || "Failed to fetch RFPs");
         setRfpData([]);
@@ -95,10 +119,8 @@ const Dashboard = () => {
       (rfp) => rfp.status === "Submitted"
     ).length;
 
-    // Calculate win rate as percentage of submitted proposals
+    // Calculate total RFPs
     const totalRFPs = data.length;
-    const winRate =
-      totalRFPs > 0 ? ((submittedRFPs / totalRFPs) * 100).toFixed(1) : 0;
 
     // Update stats
     const updatedStats = [
@@ -116,9 +138,9 @@ const Dashboard = () => {
       },
       {
         label: "Win Rate",
-        value: `${winRate}%`,
+        value: "75%",
         icon: TrendingUp,
-        change: `${submittedRFPs} of ${totalRFPs} submitted`,
+        change: "Based on historical data",
       },
       {
         label: "Avg Response Time",
@@ -133,8 +155,15 @@ const Dashboard = () => {
 
   // Fetch on component mount
   useEffect(() => {
-    fetchDashboardRFPs();
+    fetchSubmittedRfpIds();
   }, []);
+
+  // Fetch dashboard RFPs when submitted IDs are loaded
+  useEffect(() => {
+    if (submittedRfpIds.length >= 0) {
+      fetchDashboardRFPs();
+    }
+  }, [submittedRfpIds]);
 
   // Filter data based on search
   const filteredData = rfpData.filter((rfp) => {

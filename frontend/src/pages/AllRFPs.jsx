@@ -39,9 +39,24 @@ const AllRFPs = () => {
   const [openFilter, setOpenFilter] = useState(null);
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [submittedRfpIds, setSubmittedRfpIds] = useState([]);
 
   const BACKEND_URL = "http://127.0.0.1:5000";
+
+  // Fetch submitted RFP IDs from backend
+  const fetchSubmittedRfpIds = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/submitted`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const ids = result.data.map((rfp) => rfp.rfp_id);
+        setSubmittedRfpIds(ids);
+      }
+    } catch (err) {
+      console.error("Error fetching submitted RFPs:", err);
+    }
+  };
 
   // Fetch scraped RFPs from backend
   const fetchRFPs = async () => {
@@ -67,6 +82,10 @@ const AllRFPs = () => {
           issue_date:
             rfp.issue_date ||
             new Date(Date.now() - 86400000 * 5).toISOString().split("T")[0],
+          // Override status if RFP is submitted
+          status: submittedRfpIds.includes(rfp.rfp_id)
+            ? "Submitted"
+            : rfp.status,
         }));
         setRfpData(enrichedData);
       } else {
@@ -82,10 +101,17 @@ const AllRFPs = () => {
     }
   };
 
-  // Fetch on component mount
+  // Fetch submitted RFP IDs on component mount
   useEffect(() => {
-    fetchRFPs();
+    fetchSubmittedRfpIds();
   }, []);
+
+  // Fetch RFPs when submitted IDs are loaded
+  useEffect(() => {
+    if (submittedRfpIds.length >= 0) {
+      fetchRFPs();
+    }
+  }, [submittedRfpIds]);
 
   const toggleDropdown = (key) =>
     setOpenFilter(openFilter === key ? null : key);
@@ -134,13 +160,6 @@ const AllRFPs = () => {
             >
               <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
               {loading ? "Refreshing..." : "Refresh"}
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-            >
-              <Plus size={18} />
-              Add RFP
             </button>
           </div>
         </div>

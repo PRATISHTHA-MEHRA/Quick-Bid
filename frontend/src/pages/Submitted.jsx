@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { MoreVertical, RefreshCw, AlertCircle } from "lucide-react";
+import { MoreVertical, RefreshCw, AlertCircle, Download } from "lucide-react";
+import html2pdf from "html2pdf.js";
 
 const SubmittedRFPs = () => {
   const [submittedData, setSubmittedData] = useState([]);
@@ -42,9 +43,139 @@ const SubmittedRFPs = () => {
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
     try {
+      // Handle ISO format (YYYY-MM-DD)
+      if (typeof dateStr === "string" && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateStr.split("-");
+        return `${day}-${month}-${year}`;
+      }
       return new Date(dateStr).toLocaleDateString("en-GB").replace(/\//g, "-");
     } catch {
       return dateStr;
+    }
+  };
+
+  // Download proposal as PDF
+  const handleDownloadProposal = async (rfp) => {
+    try {
+      // Fetch the full proposal details from matched-products endpoint
+      const response = await fetch(
+        `${BACKEND_URL}/rfps/${rfp.rfp_id}/matched-products`
+      );
+      const result = await response.json();
+
+      if (!result.success) {
+        alert("Failed to fetch proposal details. Please try again.");
+        return;
+      }
+
+      const rfpDetails = result.rfp;
+      const matchedProduct = result.matched_products[0];
+
+      // Create proposal text from generate.py template
+      const proposalText = `TECHNICAL & COMMERCIAL PROPOSAL
+============================================================
+
+RFP Reference Details
+RFP ID: ${rfpDetails.rfp_id}
+Title: ${rfpDetails.title}
+Issuing Authority: ${rfpDetails.organization}
+Department: ${rfpDetails.department}
+Deadline: ${rfpDetails.deadline}
+
+Match Summary
+Match Confidence: ${matchedProduct.match_percent}%
+Recommended SKU: ${matchedProduct.sku}
+Matched Product: ${matchedProduct.product_name}
+Category: ${matchedProduct.category}
+
+Technical Offer
+Product Specifications:
+- Conductor Material: ${matchedProduct.conductor_material}
+- Conductor Size: ${matchedProduct.conductor_size_sqmm} sqmm
+- Voltage Rating: ${matchedProduct.voltage_rating} kV
+- Compliance Standard: ${matchedProduct.standard_iec}
+
+Commercial Offer
+Unit Price: ₹${matchedProduct.unit_price.toFixed(2)}
+Testing Charges: ₹${matchedProduct.test_price.toFixed(2)}
+Total Base Price: ₹${(
+        matchedProduct.unit_price + matchedProduct.test_price
+      ).toFixed(2)}
+
+(Final pricing will depend on the quantity specified in the BOQ.)
+
+Why Our Product Fits the Requirement
+- Fully compliant with ${matchedProduct.standard_iec} standards
+- High-quality ${matchedProduct.conductor_material} conductor material
+- Low resistance and durable insulation design
+- Manufactured in certified facilities with strong QA processes
+- Competitive pricing with complete transparency
+- Extensive testing procedures included
+- Reliable support and warranty coverage
+
+Delivery and Terms
+Expected Delivery: As per project schedule
+Warranty: Standard OEM warranty applies
+Payment Terms: To be mutually agreed
+Proposal Validity: 90 days from date of issue
+
+Compliance Statement
+We confirm that the proposed product meets all requirements specified in the RFP, including:
+• Conductor and insulation specifications  
+• Voltage and resistance parameters  
+• Type and routine testing obligations  
+• Conformance with ${matchedProduct.standard_iec} standards  
+
+Thank you for considering our proposal. We look forward to supporting your project with high-quality products and reliable service.
+
+Best Regards  
+Simrat Pyrotech  
+simratpyrotech@gmail.com  
+============================================================`;
+
+      // Create a temporary container with full proposal content
+      const element = document.createElement("div");
+      element.style.padding = "20px";
+      element.style.fontFamily = "Arial, sans-serif";
+      element.style.fontSize = "12px";
+      element.style.lineHeight = "1.6";
+      element.style.color = "#333";
+
+      // Add title
+      const title = document.createElement("h1");
+      title.textContent = "TECHNICAL & COMMERCIAL PROPOSAL";
+      title.style.textAlign = "center";
+      title.style.marginBottom = "20px";
+      element.appendChild(title);
+
+      // Add content as formatted text
+      const contentDiv = document.createElement("div");
+      contentDiv.style.whiteSpace = "pre-wrap";
+      contentDiv.style.wordWrap = "break-word";
+      contentDiv.textContent = proposalText;
+      element.appendChild(contentDiv);
+
+      // PDF options
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `Proposal_${rfp.rfp_id}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, logging: false },
+        jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+      };
+
+      // Generate PDF from entire content
+      html2pdf()
+        .set(opt)
+        .from(element)
+        .save()
+        .catch((err) => {
+          console.error("PDF generation error:", err);
+          alert("Failed to generate PDF. Please try again.");
+        });
+    } catch (err) {
+      console.error("Error downloading proposal:", err);
+      alert("Failed to download proposal. Please try again.");
     }
   };
 
@@ -135,8 +266,12 @@ const SubmittedRFPs = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="p-2 hover:bg-gray-200 rounded">
-                        <MoreVertical size={16} className="text-gray-500" />
+                      <button
+                        onClick={() => handleDownloadProposal(rfp)}
+                        className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition font-medium"
+                      >
+                        <Download size={14} />
+                        Download
                       </button>
                     </td>
                   </tr>
@@ -165,7 +300,7 @@ const SubmittedRFPs = () => {
               No submitted RFPs
             </p>
             <p className="text-sm text-gray-500 mt-2 mb-4">
-              RFPs with closed status will appear here
+              RFPs with submitted proposals will appear here
             </p>
             <button
               onClick={fetchSubmitted}

@@ -18,12 +18,13 @@ const Sidebar = () => {
 
   return (
     <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 p-6 hidden lg:flex flex-col">
-
       {/* Branding */}
       <div className="flex items-center gap-3 mb-8">
         <div className="w-10 h-10 bg-green-500 rounded-full"></div>
         <div>
-          <h2 className="font-semibold text-gray-900 text-lg">RFP Automation</h2>
+          <h2 className="font-semibold text-gray-900 text-lg">
+            RFP Automation
+          </h2>
           <p className="text-xs text-gray-500">WSC Inc.</p>
         </div>
       </div>
@@ -109,31 +110,6 @@ const Sidebar = () => {
       >
         <DollarSign size={18} /> Pricing
       </Link>
-
-      <Link
-        to="/proposalGeneration"
-        className={`px-4 py-3 rounded-lg flex items-center gap-3 text-sm ${
-          isActive("/proposal")
-            ? "bg-blue-100 text-blue-600 font-medium"
-            : "text-gray-700 hover:bg-gray-100"
-        }`}
-      >
-        <FileText size={18} /> Proposal Generator
-      </Link>
-
-      {/* Settings Bottom */}
-      <div className="mt-auto">
-        <Link
-          to="/settings"
-          className={`px-4 py-3 rounded-lg flex items-center gap-3 text-sm ${
-            isActive("/settings")
-              ? "bg-blue-100 text-blue-600 font-medium"
-              : "text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          <Settings size={18} /> Settings
-        </Link>
-      </div>
     </aside>
   );
 };

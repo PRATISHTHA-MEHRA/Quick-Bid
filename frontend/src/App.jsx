@@ -12,9 +12,9 @@ import SubmittedRFPs from "./pages/Submitted";
 import NewIncoming from "./pages/NewIncoming";
 import ProductCatalogue from "./pages/productCatalogue";
 import PricingCatalogue from "./pages/pricingCatalogue";
-import NewProposal from "./pages/proposalGeneration";
 import MatchedProducts from "./pages/matchedProducts";
 import ProposalEdit from "./pages/ProposalEdit";
+import SubmissionSuccess from "./pages/SubmissionSuccess";
 
 import "./index.css";
 import "./App.css";
@@ -27,6 +27,12 @@ const App = () => (
         {/* Public Landing Page (no sidebar) */}
         <Route path="/" element={<Index />} />
 
+        {/* Success Page (no sidebar) */}
+        <Route
+          path="/rfps/submission-success"
+          element={<SubmissionSuccess />}
+        />
+
         {/* Dashboard Layout Pages */}
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -35,7 +41,6 @@ const App = () => (
           <Route path="/rfps/new" element={<NewIncoming />} />
           <Route path="/productCatalogue" element={<ProductCatalogue />} />
           <Route path="/pricingCatalogue" element={<PricingCatalogue />} />
-          <Route path="/proposalGeneration" element={<NewProposal />} />
           <Route path="/new-incoming" element={<NewIncoming />} />
           <Route
             path="/rfps/:rfpId/matched-products"

@@ -202,7 +202,6 @@ simratpyrotech@gmail.com
     setSuccess(false);
 
     try {
-      // Simulate email submission to scraped contact
       const response = await fetch(`${BACKEND_URL}/submit-proposal`, {
         method: "POST",
         headers: {
@@ -214,7 +213,8 @@ simratpyrotech@gmail.com
           organization: proposal.organization,
           proposal_text: editedProposal || proposal.proposal_text,
           from_email: "simratpyrotech@gmail.com",
-          to_email: rfpDetails?.submission_email || "simratoberoi2006@gmail.com",
+          to_email:
+            rfpDetails?.submission_email || "simratoberoi2006@gmail.com",
         }),
       });
 
@@ -222,10 +222,17 @@ simratpyrotech@gmail.com
 
       if (result.success) {
         setSuccess(true);
-        // Redirect to Submitted page after 2 seconds
+        // Navigate to success page with RFP data
         setTimeout(() => {
-          navigate("/rfps/submitted");
-        }, 2000);
+          navigate("/rfps/submission-success", {
+            state: {
+              rfpData: {
+                rfp_id: proposal.rfp_id,
+                title: proposal.title,
+              },
+            },
+          });
+        }, 500);
       } else {
         setError(result.error || "Failed to submit proposal");
       }

@@ -9,6 +9,7 @@ import pandas as pd
 from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import csv
 
 # Import your custom modules
 from scrape import scrape_rfps
@@ -314,29 +315,65 @@ def new_incoming():
 @app.route("/submitted", methods=["GET"])
 def submitted():
     """
-    Fetch RFPs with 'Closed' status to display as submitted proposals
-    Returns: List of closed/submitted RFPs
+    Fetch all submitted RFPs (tracked in submitted_rfps.csv)
+    Returns: List of submitted RFPs regardless of their original status
     """
     try:
-        print("\n[SUBMITTED] Fetching submitted (closed) RFPs...")
+        print("\n[SUBMITTED] Fetching submitted RFPs...")
         
-        # 1. SCRAPE RFPs
+        submitted_file = "submitted_rfps.csv"
+        
+        # If no submissions yet, return empty
+        if not os.path.exists(submitted_file):
+            return jsonify({
+                "success": True,
+                "error": "No submitted RFPs yet",
+                "count": 0,
+                "data": []
+            }), 200
+        
+        # Read submitted RFP IDs
+        submitted_ids = []
+        try:
+            with open(submitted_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                if reader.fieldnames:
+                    submitted_ids = [row['rfp_id'] for row in reader]
+        except Exception as e:
+            print(f"✗ Error reading submitted file: {str(e)}")
+            return jsonify({
+                "success": True,
+                "error": "Could not read submitted RFPs",
+                "count": 0,
+                "data": []
+            }), 200
+        
+        if not submitted_ids:
+            return jsonify({
+                "success": True,
+                "error": "No submitted RFPs yet",
+                "count": 0,
+                "data": []
+            }), 200
+        
+        # 1. SCRAPE all RFPs
         scraped_df = scrape_rfps()
         
         if scraped_df is None or scraped_df.empty:
             return jsonify({
-                "success": False,
+                "success": True,
                 "error": "No RFPs found during scraping",
+                "count": 0,
                 "data": []
-            }), 404
+            }), 200
         
-        # Filter only closed RFPs
-        submitted_df = scraped_df[scraped_df["status"].str.lower() == "closed"]
+        # Filter only submitted RFPs
+        submitted_df = scraped_df[scraped_df['rfp_id'].isin(submitted_ids)]
         
         if submitted_df.empty:
             return jsonify({
                 "success": True,
-                "error": "No submitted (closed) RFPs found",
+                "error": "No submitted RFPs found",
                 "count": 0,
                 "data": []
             }), 200
@@ -385,11 +422,11 @@ def submitted():
         import traceback
         print(f"✗ Error in /submitted: {str(e)}")
         return jsonify({
-            "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc(),
+            "success": True,
+            "error": "Could not fetch submitted RFPs",
+            "count": 0,
             "data": []
-        }), 500
+        }), 200
 
 # --------------------------------------------------------
 # All RFPs for Dashboard
@@ -613,6 +650,71 @@ def get_matched_products(rfp_id):
         }), 500
 
 # --------------------------------------------------------
+# Mark RFP as Submitted
+# --------------------------------------------------------
+def mark_rfp_as_submitted(rfp_id):
+    """
+    Track submitted RFP in a separate CSV file
+    """
+    try:
+        submitted_file = "submitted_rfps.csv"
+        
+        # Read existing submitted RFPs
+        submitted_rfps = []
+        if os.path.exists(submitted_file):
+            with open(submitted_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                if reader.fieldnames:
+                    submitted_rfps = list(reader)
+        
+        # Check if RFP already submitted
+        if not any(rfp['rfp_id'] == rfp_id for rfp in submitted_rfps):
+            submitted_rfps.append({
+                'rfp_id': rfp_id,
+                'submitted_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+            # Write back to CSV
+            with open(submitted_file, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=['rfp_id', 'submitted_date'])
+                writer.writeheader()
+                writer.writerows(submitted_rfps)
+            
+            print(f"✓ RFP {rfp_id} marked as submitted")
+            return True
+        else:
+            print(f"⚠ RFP {rfp_id} already marked as submitted")
+            return True
+            
+    except Exception as e:
+        print(f"✗ Error marking RFP as submitted: {str(e)}")
+        return False
+
+
+# --------------------------------------------------------
+# Check if RFP is Submitted
+# --------------------------------------------------------
+def is_rfp_submitted(rfp_id):
+    """
+    Check if an RFP has been submitted
+    """
+    try:
+        submitted_file = "submitted_rfps.csv"
+        
+        if not os.path.exists(submitted_file):
+            return False
+        
+        with open(submitted_file, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames:
+                return any(rfp['rfp_id'] == rfp_id for rfp in reader)
+        
+        return False
+    except Exception as e:
+        print(f"✗ Error checking submitted status: {str(e)}")
+        return False
+
+# --------------------------------------------------------
 # Submit Proposal with Email
 # --------------------------------------------------------
 @app.route("/submit-proposal", methods=["POST"])
@@ -674,8 +776,8 @@ This is an automated submission. Please do not reply to this email.
             
             print(f"✓ Proposal email sent to {to_email}")
             
-            # Mark RFP as closed/submitted in scraped data
-            # This is a simplified approach - in production, use a database
+            # Mark RFP as submitted in tracking file
+            mark_rfp_as_submitted(rfp_id)
             
             return jsonify({
                 "success": True,
