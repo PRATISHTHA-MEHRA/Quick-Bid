@@ -51,8 +51,8 @@ def scrape_rfps():
                 submission_text = safe_text(description_elements[1])
                 # Extract email from the text
                 # The text format is: "For submission of proposals, please send your complete documentation to: xlmwires@gmail.com"
-                if "xlmwires@gmail.com" in submission_text:
-                    submission_email = "xlmwires@gmail.com"
+                if "simratoberoi2006@gmail.com" in submission_text:
+                    submission_email = "simratoberoi2006@gmail.com"
             
             # Additional info from info-grid
             info_values = card.select(".info-value")

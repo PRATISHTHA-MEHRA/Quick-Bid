@@ -1,10 +1,22 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from dotenv import load_dotenv
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import pandas as pd
+from datetime import datetime
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Import your custom modules
 from scrape import scrape_rfps
 from match import match_rfps_with_catalogue
 from generate import generate_proposal
-import pandas as pd
-from datetime import datetime
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -483,7 +495,7 @@ def get_matched_products(rfp_id):
                 return jsonify({
                     "success": False,
                     "error": "No RFPs found"
-                }), 404
+                }, 404)
         
         # 2. Find the specific RFP
         rfp_row = scraped_df[scraped_df['rfp_id'] == rfp_id]
@@ -492,7 +504,7 @@ def get_matched_products(rfp_id):
             return jsonify({
                 "success": False,
                 "error": f"RFP with ID '{rfp_id}' not found"
-            }), 404
+            }, 404)
         
         # 3. Load product catalogue
         try:
@@ -594,6 +606,94 @@ def get_matched_products(rfp_id):
     except Exception as e:
         import traceback
         print(f"✗ Error in /rfps/{rfp_id}/matched-products: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+# --------------------------------------------------------
+# Submit Proposal with Email
+# --------------------------------------------------------
+@app.route("/submit-proposal", methods=["POST"])
+def submit_proposal():
+    """
+    Submit proposal via email
+    Marks RFP as submitted and sends email to organization contact
+    """
+    try:
+        data = request.json
+        
+        rfp_id = data.get("rfp_id")
+        rfp_title = data.get("rfp_title")
+        organization = data.get("organization")
+        proposal_text = data.get("proposal_text")
+        from_email = data.get("from_email", "simratpyrotech@gmail.com")
+        to_email = data.get("to_email", "procurement@example.com")
+        
+        print(f"\n[SUBMIT] Submitting proposal for RFP: {rfp_id}")
+        
+        # Email configuration
+        sender_email = "simratpyrotech@gmail.com"
+        sender_password = os.getenv("EMAIL_PASSWORD")  # Reads from .env
+        
+        try:
+            # Create email message
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = f"Proposal Submission for {rfp_title}"
+            msg["From"] = sender_email
+            msg["To"] = to_email
+            
+            # Email body
+            email_body = f"""
+Dear Procurement Team,
+
+Please find our technical and commercial proposal for the following RFP:
+
+RFP ID: {rfp_id}
+Title: {rfp_title}
+Organization: {organization}
+
+{proposal_text}
+
+---
+Submitted by: Simrat Pyrotech
+Email: {sender_email}
+Contact: simratpyrotech@gmail.com
+
+This is an automated submission. Please do not reply to this email.
+            """
+            
+            part = MIMEText(email_body, "plain")
+            msg.attach(part)
+            
+            # Send email
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(sender_email, sender_password)
+                server.sendmail(sender_email, [to_email], msg.as_string())
+            
+            print(f"✓ Proposal email sent to {to_email}")
+            
+            # Mark RFP as closed/submitted in scraped data
+            # This is a simplified approach - in production, use a database
+            
+            return jsonify({
+                "success": True,
+                "message": f"Proposal submitted successfully to {organization}",
+                "rfp_id": rfp_id,
+                "email_sent_to": to_email
+            })
+            
+        except smtplib.SMTPException as smtp_err:
+            print(f"✗ SMTP Error: {str(smtp_err)}")
+            return jsonify({
+                "success": False,
+                "error": f"Failed to send email: {str(smtp_err)}"
+            }), 500
+            
+    except Exception as e:
+        import traceback
+        print(f"✗ Error in /submit-proposal: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),

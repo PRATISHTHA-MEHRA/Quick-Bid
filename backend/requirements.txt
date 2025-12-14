@@ -6,3 +6,4 @@ beautifulsoup4
 lxml
 scikit-learn
 certifi
+python-dotenv

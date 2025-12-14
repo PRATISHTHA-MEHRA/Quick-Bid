@@ -53,6 +53,11 @@ const NewIncoming = () => {
     navigate(`/rfps/${rfpId}/matched-products`);
   };
 
+  // Navigate to proposal edit page
+  const handleGenerateProposal = (rfpId) => {
+    navigate(`/rfps/${rfpId}/edit-proposal`);
+  };
+
   // Filter data based on search
   const filteredData = rfpData.filter((rfp) => {
     const matchesSearch =
@@ -209,14 +214,17 @@ const NewIncoming = () => {
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <button 
+                      <button
                         onClick={() => handleViewMatches(rfp.rfp_id)}
                         className="px-3 py-2 bg-purple-600 text-white text-xs rounded-md hover:bg-purple-700 transition font-medium flex items-center gap-1"
                       >
                         <Package size={14} />
                         View Matches
                       </button>
-                      <button className="px-3 py-2 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition font-medium">
+                      <button
+                        onClick={() => handleGenerateProposal(rfp.rfp_id)}
+                        className="px-3 py-2 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition font-medium"
+                      >
                         Generate Proposal
                       </button>
                     </div>
