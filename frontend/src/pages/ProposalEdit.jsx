@@ -128,8 +128,8 @@ We confirm that the proposed product meets all requirements specified in the RFP
 Thank you for considering our proposal. We look forward to supporting your project with high-quality products and reliable service.
 
 Best Regards  
-Simrat Pyrotech  
-simratpyrotech@gmail.com  
+Asian Paints Pvt. Ltd.  
+mockasianpaints@gmail.com 
 ============================================================`;
   };
 
@@ -213,7 +213,7 @@ simratpyrotech@gmail.com
           rfp_title: proposal.title,
           organization: proposal.organization,
           proposal_text: editedProposal || proposal.proposal_text,
-          from_email: "simratpyrotech@gmail.com",
+          from_email: "mockasianpaints@gmail.com ",
           to_email:
             rfpDetails?.submission_email || "simratoberoi2006@gmail.com",
         }),

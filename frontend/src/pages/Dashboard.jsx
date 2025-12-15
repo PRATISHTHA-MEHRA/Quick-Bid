@@ -12,10 +12,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-
 const Dashboard = () => {
   const [rfpData, setRfpData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [submittedRfpIds, setSubmittedRfpIds] = useState([]);
@@ -42,14 +41,18 @@ const Dashboard = () => {
       if (result.success && result.data) {
         const ids = result.data.map((rfp) => rfp.rfp_id);
         setSubmittedRfpIds(ids);
+        return ids; // Return the IDs so we can use them immediately
       }
+      return [];
     } catch (err) {
       console.error("Error fetching submitted RFPs:", err);
+      return [];
     }
   };
 
   // Fetch dashboard RFPs from backend
-  const fetchDashboardRFPs = async () => {
+  const fetchDashboardRFPs = async (submittedIds = submittedRfpIds) => {
+    // Don't set loading if we're already loading
     setLoading(true);
     setError(null);
 
@@ -61,15 +64,48 @@ const Dashboard = () => {
         // Map data with submitted status check
         const enrichedData = result.data.map((rfp) => ({
           ...rfp,
-          status: submittedRfpIds.includes(rfp.rfp_id)
-            ? "Submitted"
-            : rfp.status,
+          status: submittedIds.includes(rfp.rfp_id) ? "Submitted" : rfp.status,
         }));
 
-        setRfpData(enrichedData);
-
         // Calculate stats from data
-        calculateStats(enrichedData);
+        const activeRFPs = enrichedData.filter(
+          (rfp) => rfp.status === "In Progress"
+        ).length;
+
+        const submittedRFPs = enrichedData.filter(
+          (rfp) => rfp.status === "Submitted"
+        ).length;
+
+        const updatedStats = [
+          {
+            label: "Active RFPs",
+            value: activeRFPs.toString(),
+            icon: FileText,
+            change: `+${Math.max(0, activeRFPs - 3)} this week`,
+          },
+          {
+            label: "Proposals Sent",
+            value: submittedRFPs.toString(),
+            icon: Send,
+            change: `+${Math.max(0, submittedRFPs - 12)} this month`,
+          },
+          {
+            label: "Win Rate",
+            value: "75%",
+            icon: TrendingUp,
+            change: "Based on historical data",
+          },
+          {
+            label: "Avg Response Time",
+            value: "1.2 days",
+            icon: Clock,
+            change: "-10 days improved",
+          },
+        ];
+
+        // Batch state updates
+        setRfpData(enrichedData);
+        setStats(updatedStats);
       } else {
         setError(result.error || "Failed to fetch RFPs");
         setRfpData([]);
@@ -85,63 +121,95 @@ const Dashboard = () => {
     }
   };
 
-  // Calculate stats from RFP data
-  const calculateStats = (data) => {
-    // Count open RFPs (Active RFPs)
-    const activeRFPs = data.filter(
-      (rfp) => rfp.status === "In Progress"
-    ).length;
+  // Calculate stats from RFP data - REMOVED (now inline in fetchDashboardRFPs)
 
-    // Count submitted RFPs (Proposals Sent)
-    const submittedRFPs = data.filter(
-      (rfp) => rfp.status === "Submitted"
-    ).length;
-
-    // Calculate total RFPs
-    const totalRFPs = data.length;
-
-    // Update stats
-    const updatedStats = [
-      {
-        label: "Active RFPs",
-        value: activeRFPs.toString(),
-        icon: FileText,
-        change: `+${Math.max(0, activeRFPs - 3)} this week`,
-      },
-      {
-        label: "Proposals Sent",
-        value: submittedRFPs.toString(),
-        icon: Send,
-        change: `+${Math.max(0, submittedRFPs - 12)} this month`,
-      },
-      {
-        label: "Win Rate",
-        value: "75%",
-        icon: TrendingUp,
-        change: "Based on historical data",
-      },
-      {
-        label: "Avg Response Time",
-        value: "2.4 days",
-        icon: Clock,
-        change: "-1.2 days improved",
-      },
-    ];
-
-    setStats(updatedStats);
-  };
-
-  // Fetch on component mount
+  // Fetch on component mount - FIXED: Only runs once
   useEffect(() => {
-    fetchSubmittedRfpIds();
-  }, []);
+    const fetchInitialData = async () => {
+      try {
+        // Fetch both APIs in parallel for faster loading
+        const [submittedResponse, dashboardResponse] = await Promise.all([
+          fetch(`${BACKEND_URL}/submitted`).catch(() => null),
+          fetch(`${BACKEND_URL}/dashboard-rfps`).catch(() => null),
+        ]);
 
-  // Fetch dashboard RFPs when submitted IDs are loaded
-  useEffect(() => {
-    if (submittedRfpIds.length >= 0) {
-      fetchDashboardRFPs();
-    }
-  }, [submittedRfpIds]);
+        // Process submitted RFPs
+        let submittedIds = [];
+        if (submittedResponse) {
+          const submittedResult = await submittedResponse.json();
+          if (submittedResult.success && submittedResult.data) {
+            submittedIds = submittedResult.data.map((rfp) => rfp.rfp_id);
+            setSubmittedRfpIds(submittedIds);
+          }
+        }
+
+        // Process dashboard RFPs
+        if (dashboardResponse) {
+          const dashboardResult = await dashboardResponse.json();
+
+          if (dashboardResult.success && dashboardResult.data) {
+            const enrichedData = dashboardResult.data.map((rfp) => ({
+              ...rfp,
+              status: submittedIds.includes(rfp.rfp_id)
+                ? "Submitted"
+                : rfp.status,
+            }));
+
+            // Calculate stats inline
+            const activeRFPs = enrichedData.filter(
+              (rfp) => rfp.status === "In Progress"
+            ).length;
+
+            const submittedRFPs = enrichedData.filter(
+              (rfp) => rfp.status === "Submitted"
+            ).length;
+
+            const updatedStats = [
+              {
+                label: "Active RFPs",
+                value: activeRFPs.toString(),
+                icon: FileText,
+                change: `+${Math.max(0, activeRFPs - 3)} this week`,
+              },
+              {
+                label: "Proposals Sent",
+                value: submittedRFPs.toString(),
+                icon: Send,
+                change: `+${Math.max(0, submittedRFPs - 12)} this month`,
+              },
+              {
+                label: "Win Rate",
+                value: "75%",
+                icon: TrendingUp,
+                change: "Based on historical data",
+              },
+              {
+                label: "Avg Response Time",
+                value: "1.2 days",
+                icon: Clock,
+                change: "-10 days improved",
+              },
+            ];
+
+            // Batch all state updates together
+            setRfpData(enrichedData);
+            setStats(updatedStats);
+          } else {
+            setError(dashboardResult.error || "Failed to fetch RFPs");
+          }
+        }
+      } catch (err) {
+        setError(
+          `Connection error: ${err.message}. Make sure Flask backend is running on port 5000.`
+        );
+        console.error("Fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, []); // Empty dependency array - only runs once on mount
 
   // Filter data based on search
   const filteredData = rfpData.filter((rfp) => {
@@ -250,7 +318,7 @@ const Dashboard = () => {
               </div>
 
               <button
-                onClick={fetchDashboardRFPs}
+                onClick={() => fetchDashboardRFPs()}
                 disabled={loading}
                 className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm hover:bg-gray-100 disabled:bg-gray-100 transition flex-shrink-0"
               >
@@ -372,7 +440,7 @@ const Dashboard = () => {
                   Click refresh to fetch RFPs from backend
                 </p>
                 <button
-                  onClick={fetchDashboardRFPs}
+                  onClick={() => fetchDashboardRFPs()}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
                 >
                   Fetch Now

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter, RefreshCw, AlertCircle, Package } from "lucide-react";
 
@@ -8,15 +8,16 @@ const getPriorityStyles = (priority) => {
   return "bg-green-100 text-green-700";
 };
 
+const BACKEND_URL = "http://127.0.0.1:5000";
+
 const NewIncoming = () => {
   const [rfpData, setRfpData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [submittedRfpIds, setSubmittedRfpIds] = useState([]);
   const navigate = useNavigate();
-
-  const BACKEND_URL = "http://127.0.0.1:5000";
+  const hasInitialized = useRef(false);
 
   // Fetch submitted RFP IDs from backend
   const fetchSubmittedRfpIds = async () => {
@@ -25,11 +26,12 @@ const NewIncoming = () => {
       const result = await response.json();
 
       if (result.success && result.data) {
-        const ids = result.data.map((rfp) => rfp.rfp_id);
-        setSubmittedRfpIds(ids);
+        return result.data.map((rfp) => rfp.rfp_id);
       }
+      return [];
     } catch (err) {
       console.error("Error fetching submitted RFPs:", err);
+      return [];
     }
   };
 
@@ -59,15 +61,25 @@ const NewIncoming = () => {
     }
   };
 
-  // Fetch submitted RFP IDs on component mount
+  // Initialize data on component mount - ONLY ONCE
   useEffect(() => {
-    fetchSubmittedRfpIds();
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initializeData = async () => {
+      const submittedIds = await fetchSubmittedRfpIds();
+      setSubmittedRfpIds(submittedIds);
+      await fetchNewIncoming();
+    };
+    initializeData();
   }, []);
 
-  // Fetch new incoming RFPs when component mounts or submitted IDs change
-  useEffect(() => {
-    fetchNewIncoming();
-  }, [submittedRfpIds]);
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    const submittedIds = await fetchSubmittedRfpIds();
+    setSubmittedRfpIds(submittedIds);
+    await fetchNewIncoming();
+  };
 
   // Navigate to matched products page
   const handleViewMatches = (rfpId) => {
@@ -119,7 +131,7 @@ const NewIncoming = () => {
             </p>
             <p className="text-xs text-red-600 mt-1">{error}</p>
             <button
-              onClick={fetchNewIncoming}
+              onClick={handleRefresh}
               className="text-xs text-red-700 underline mt-2 hover:text-red-800"
             >
               Try again
@@ -142,7 +154,7 @@ const NewIncoming = () => {
         </div>
 
         <button
-          onClick={fetchNewIncoming}
+          onClick={handleRefresh}
           disabled={loading}
           className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm bg-white hover:bg-gray-100 disabled:bg-gray-100 transition font-medium"
         >
@@ -286,7 +298,7 @@ const NewIncoming = () => {
                 : 'Click "Refresh" to scan for new incoming RFPs'}
             </p>
             <button
-              onClick={fetchNewIncoming}
+              onClick={handleRefresh}
               className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
             >
               Fetch Now

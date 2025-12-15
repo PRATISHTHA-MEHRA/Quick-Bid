@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Search,
   RefreshCw,
@@ -41,25 +41,25 @@ const AllRFPs = () => {
   const [openFilter, setOpenFilter] = useState(null);
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
-
+  const hasInitialized = useRef(false);
 
   const fetchSubmittedRfpIds = async () => {
     try {
       const response = await fetch(`${BACKEND_URL}/submitted`);
       const result = await response.json();
       if (result.success && result.data) {
-        setSubmittedRfpIds(result.data.map((r) => r.rfp_id));
+        return result.data.map((r) => r.rfp_id);
       }
+      return [];
     } catch (err) {
       console.error("Error fetching submitted RFPs:", err);
+      return [];
     }
   };
 
-
-  const fetchRFPs = async () => {
+  const fetchRFPs = async (submittedIds = []) => {
     setLoading(true);
     setError(null);
-    setRfpData([]);
     try {
       const response = await fetch(`${BACKEND_URL}/scrape`);
       const result = await response.json();
@@ -77,9 +77,7 @@ const AllRFPs = () => {
           issue_date:
             rfp.issue_date ||
             new Date(Date.now() - 86400000 * 5).toISOString().split("T")[0],
-          status: submittedRfpIds.includes(rfp.rfp_id)
-            ? "Submitted"
-            : rfp.status,
+          status: submittedIds.includes(rfp.rfp_id) ? "Submitted" : rfp.status,
         }));
         setRfpData(enriched);
       } else {
@@ -93,18 +91,25 @@ const AllRFPs = () => {
     }
   };
 
+  // Initialize data on component mount - ONLY ONCE
   useEffect(() => {
-    const init = async () => {
-      await fetchSubmittedRfpIds();
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initializeData = async () => {
+      const submittedIds = await fetchSubmittedRfpIds();
+      setSubmittedRfpIds(submittedIds);
+      await fetchRFPs(submittedIds);
     };
-    init();
+    initializeData();
   }, []);
 
-  useEffect(() => {
-    if (submittedRfpIds.length >= 0) {
-      fetchRFPs();
-    }
-  }, [submittedRfpIds]);
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    const submittedIds = await fetchSubmittedRfpIds();
+    setSubmittedRfpIds(submittedIds);
+    await fetchRFPs(submittedIds);
+  };
 
   const toggleDropdown = (key) =>
     setOpenFilter(openFilter === key ? null : key);
@@ -141,7 +146,7 @@ const AllRFPs = () => {
           </p>
         </div>
         <button
-          onClick={fetchRFPs}
+          onClick={handleRefresh}
           disabled={loading}
           className="flex items-center gap-2 px-5 py-2.5 bg-white border rounded-lg hover:bg-gray-50 disabled:bg-gray-100 transition font-medium text-sm"
         >
@@ -165,7 +170,7 @@ const AllRFPs = () => {
             </p>
             <p className="text-xs text-red-600 mt-1">{error}</p>
             <button
-              onClick={fetchRFPs}
+              onClick={handleRefresh}
               className="text-xs text-red-700 underline mt-2"
             >
               Try again
