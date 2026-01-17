@@ -89,6 +89,8 @@ export default function ProductCatalogue() {
             />
           </div>
 
+          {/* just to see some Changes */}
+
           {/* Filters Dropdown */}
           <div className="relative">
             <button
